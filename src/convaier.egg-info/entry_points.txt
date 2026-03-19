@@ -1,0 +1,2 @@
+[console_scripts]
+convaier = convaier.cli:main

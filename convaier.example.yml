@@ -1,0 +1,51 @@
+project:
+  name: my-app
+
+ollama:
+  host: http://localhost:11434
+  model: qwen2.5-coder:3b
+  timeout: 120
+
+pipeline:
+  fail_fast: true
+  stages:
+    - commit
+    - lint
+    - review
+    - test
+    - build
+    - deploy
+
+stages:
+  commit:
+    diff_target: HEAD~1
+
+  lint:
+    tools:
+      - command: ruff check .
+        name: ruff
+
+  review:
+    focus:
+      - security
+      - performance
+    max_files: 20
+    max_diff_lines: 3000
+
+  test:
+    command: pytest --tb=short -q
+
+  build:
+    dockerfile: Dockerfile
+    image_name: my-app
+    tag: latest
+
+  deploy:
+    compose_file: docker-compose.yml
+    service: app
+
+reports:
+  output_dir: .convaier/reports
+  formats:
+    - markdown
+    - json
