@@ -22,11 +22,13 @@ def agent_loop(
     tools: list[dict] | None = None,
     project_root: Path | None = None,
     max_rounds: int = 5,
+    num_ctx: int = 4096,
 ) -> str:
     for i in range(max_rounds):
         kwargs: dict = {"model": model, "messages": messages}
         if tools:
             kwargs["tools"] = tools
+        kwargs["options"] = {"num_ctx": num_ctx}
 
         response = client.chat(**kwargs)
         msg = response.message

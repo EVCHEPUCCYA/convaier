@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 src/convaier/__init__.py
 src/convaier/__main__.py
@@ -16,12 +17,18 @@ src/convaier/agent/__init__.py
 src/convaier/agent/client.py
 src/convaier/agent/prompt.py
 src/convaier/agent/tools.py
+src/convaier/rag/__init__.py
+src/convaier/rag/chunker.py
+src/convaier/rag/indexer.py
+src/convaier/rag/search.py
 src/convaier/stages/__init__.py
 src/convaier/stages/build.py
 src/convaier/stages/commit.py
 src/convaier/stages/deploy.py
 src/convaier/stages/lint.py
+src/convaier/stages/metrics.py
 src/convaier/stages/review.py
+src/convaier/stages/security.py
 src/convaier/stages/test.py
 src/convaier/util/__init__.py
 src/convaier/util/docker.py

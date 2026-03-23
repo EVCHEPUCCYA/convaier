@@ -3,9 +3,14 @@ import logging
 import sys
 from pathlib import Path
 
+from convaier.ui import console, print_check_fail, print_check_ok, print_presets_table
+
 
 def _setup_logging(verbose: bool = False) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
+    if verbose:
+        level = logging.DEBUG
+    else:
+        level = logging.ERROR
     logging.basicConfig(
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
@@ -20,8 +25,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     config_path = Path(args.config)
     if not config_path.exists():
-        logging.error("Config not found: %s", config_path)
-        logging.error("Run 'convaier init' to create one.")
+        console.print(f"[error]Config not found: {config_path}[/]")
+        console.print("[dim]Run 'convaier init' to create one.[/]")
         return 1
 
     config = load_config(config_path)
@@ -35,10 +40,38 @@ def _cmd_init(args: argparse.Namespace) -> int:
 
     target = Path(args.output)
     if target.exists() and not args.force:
-        logging.error("File already exists: %s (use --force to overwrite)", target)
+        console.print(f"[error]File already exists: {target}[/] [dim](use --force to overwrite)[/]")
         return 1
     generate_example_config(target)
-    logging.info("Created %s", target)
+    console.print(f"[success]Created {target}[/]")
+    return 0
+
+
+def _cmd_index(args: argparse.Namespace) -> int:
+    from convaier.config import load_config
+
+    config_path = Path(args.config)
+    if not config_path.exists():
+        console.print(f"[error]Config not found: {config_path}[/]")
+        return 1
+
+    config = load_config(config_path)
+
+    try:
+        from convaier.rag.indexer import index_project
+    except ImportError:
+        console.print("[error]RAG requires chromadb.[/] Install with: [bold]pip install convaier\\[rag][/]")
+        return 1
+
+    console.print(f"[dim]Indexing project: {config.project_root}[/]")
+
+    from rich.progress import Progress
+    with Progress(console=console) as progress:
+        task = progress.add_task("Indexing...", total=None)
+        total = index_project(config.project_root, config.ollama, force=args.force)
+        progress.update(task, completed=total, total=total)
+
+    console.print(f"[success]Done: {total} chunks indexed[/]")
     return 0
 
 
@@ -47,22 +80,41 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
     config_path = Path(args.config)
     if not config_path.exists():
-        logging.error("Config not found: %s", config_path)
+        console.print(f"[error]Config not found: {config_path}[/]")
         return 1
 
     config = load_config(config_path)
-    logging.info("Config OK: %s", config_path)
+    print_check_ok("Config", str(config_path))
+
+    if config.language:
+        print_check_ok("Language", f"{config.language} preset")
 
     try:
         import ollama as ollama_lib
-
         client = ollama_lib.Client(host=config.ollama.host)
-        client.list()
-        logging.info("Ollama OK: %s", config.ollama.host)
+        models = client.list()
+        model_names = [m.model for m in models.models] if models.models else []
+        print_check_ok("Ollama", config.ollama.host)
+
+        if config.ollama.model in model_names:
+            print_check_ok("Model", f"{config.ollama.model} (installed)")
+        else:
+            print_check_fail("Model", f"{config.ollama.model} (not found, run: ollama pull {config.ollama.model})")
+            return 1
     except Exception as e:
-        logging.error("Ollama connection failed: %s", e)
+        print_check_fail("Ollama", str(e))
         return 1
 
+    console.print()
+    console.print("[success]All checks passed[/]")
+    return 0
+
+
+def _cmd_presets(args: argparse.Namespace) -> int:
+    from convaier.presets import PRESETS, list_presets
+
+    filtered = {k: PRESETS[k] for k in list_presets()}
+    print_presets_table(filtered)
     return 0
 
 
@@ -86,6 +138,14 @@ def main() -> None:
     init_p.add_argument("-o", "--output", default="convaier.yml", help="Output file path")
     init_p.add_argument("-f", "--force", action="store_true", help="Overwrite existing file")
 
+    # index
+    index_p = sub.add_parser("index", help="Index project for RAG context")
+    index_p.add_argument("-c", "--config", default="convaier.yml", help="Config file path")
+    index_p.add_argument("-f", "--force", action="store_true", help="Re-index from scratch")
+
+    # presets
+    sub.add_parser("presets", help="List available language presets")
+
     # check
     check_p = sub.add_parser("check", help="Validate config and Ollama connectivity")
     check_p.add_argument("-c", "--config", default="convaier.yml", help="Config file path")
@@ -97,5 +157,8 @@ def main() -> None:
         parser.print_help()
         sys.exit(0)
 
-    handlers = {"run": _cmd_run, "init": _cmd_init, "check": _cmd_check}
+    handlers = {
+        "run": _cmd_run, "init": _cmd_init, "index": _cmd_index,
+        "presets": _cmd_presets, "check": _cmd_check,
+    }
     sys.exit(handlers[args.command](args))

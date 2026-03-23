@@ -10,10 +10,15 @@ requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
     "ollama>=0.4",
+    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
+security = ["bandit>=1.7", "pip-audit>=2.6"]
+metrics = ["radon>=6.0"]
+rag = ["chromadb>=0.5"]
+all = ["bandit>=1.7", "pip-audit>=2.6", "radon>=6.0", "chromadb>=0.5"]
 
 [project.scripts]
 convaier = "convaier.cli:main"

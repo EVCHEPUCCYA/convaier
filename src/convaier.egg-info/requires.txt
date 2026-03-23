@@ -1,6 +1,22 @@
 pyyaml>=6.0
 ollama>=0.4
 
+[all]
+bandit>=1.7
+pip-audit>=2.6
+radon>=6.0
+chromadb>=0.5
+
 [dev]
 pytest
 ruff
+
+[metrics]
+radon>=6.0
+
+[rag]
+chromadb>=0.5
+
+[security]
+bandit>=1.7
+pip-audit>=2.6
